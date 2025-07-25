@@ -172,8 +172,8 @@ const analyzeMatch = analyzeResumeWithAI;
   function getKeywordColor(value: any) {
   const str = String(value).toLowerCase();
   if (str.includes('implied') || str.includes('partial')) return 'text-yellow-400';
+  if (str.includes('no') || str.includes('not')) return 'text-red-400';
   if (str.includes('present') || str.includes('yes')) return 'text-green-400';
-  if (str.includes('no') || str.includes('not present')) return 'text-red-400';
   return 'text-gray-300';
 }
 
@@ -467,11 +467,11 @@ const analyzeMatch = analyzeResumeWithAI;
                 <div key={idx} className="flex justify-between bg-gray-800 rounded px-3 py-2 text-sm">
                   <span className="text-gray-300">{key}</span>
                   <span className={`font-semibold ${getKeywordColor(value)}`}>
-                    {typeof value === 'object' ? JSON.stringify(value) : value}
+{typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value || '')}
                   </span>
                 </div>
               ))}
-          </div>
+          </div>  
         </div>
       </div>
     ) : (
