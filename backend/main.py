@@ -1,15 +1,11 @@
 # uvicorn main:app --reload
 
-import os
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pymongo import MongoClient
-import bcrypt
 from dotenv import load_dotenv
-from pydantic import BaseModel, EmailStr
 from auth import auth_router
+from resume_router import resume_router
 import check_db
-from db_utils import get_the_user_collection
 
 app = FastAPI()
 
@@ -30,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(resume_router)
 
 
 

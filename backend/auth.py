@@ -1,12 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 import bcrypt
-from pymongo.collection import Collection
-from typing import Any
 from db_utils import get_the_user_collection
 import jwt
 from datetime import datetime, timedelta
 from fastapi import Header, Request
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # User schema for request validation
 class UserSignup(BaseModel):
@@ -24,7 +27,10 @@ class UserLogin(BaseModel):
 auth_router = APIRouter()
 
 # JWT Config
-SECRET_KEY = "your_secret_key_here"  # Replace with a secure key in production
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET_KEY environment variable not set. Please check your .env file.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -71,7 +77,13 @@ def login(user: UserLogin):
     if not bcrypt.checkpw(user.password.encode('utf-8'), db_user["password"].encode('utf-8')):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
     # Create JWT token
-    token_data = {"sub": db_user["email"], "user_id": str(db_user.get("_id")), "accountType": db_user.get("accountType")}
+    token_data = {
+        "sub": db_user["email"],
+        "user_id": str(db_user.get("_id")),
+        "accountType": db_user.get("accountType"),
+        "firstName": db_user.get("firstName"),
+        "lastName": db_user.get("lastName")
+    }
     access_token = create_access_token(token_data)
     return {"access_token": access_token, "token_type": "bearer"}
 

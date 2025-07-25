@@ -5,12 +5,14 @@ import { Button } from "@/src/components/Button";
 import Link from "next/link"; // Added for "Forgot password?" and "Sign Up" links
 import NavBar from "@/src/components/NavBar";
 import axios from "axios";
+import { useRouter } from "next/navigation"; // Add this import
 
 const LogIn: React.FC = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const router = useRouter(); // Add this line
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -25,7 +27,7 @@ const LogIn: React.FC = () => {
             if (response.data.access_token) {
                 localStorage.setItem("token", response.data.access_token);
                 setSuccess("Login successful!");
-                // Optionally, redirect the user here
+                router.push("/home"); // Redirect to home page
             } else {
                 setError("No token received from server.");
             }
