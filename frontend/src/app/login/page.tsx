@@ -2,17 +2,19 @@
 
 import React, { useState } from "react";
 import { Button } from "@/src/components/Button";
-import Link from "next/link"; // Added for "Forgot password?" and "Sign Up" links
+import Link from "next/link";
 import NavBar from "@/src/components/NavBar";
+import ForgotPasswordModal from "./forgot-password"; // Import the modal
 import axios from "axios";
-import { useRouter } from "next/navigation"; // Add this import
+import { useRouter } from "next/navigation";
 
 const LogIn: React.FC = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const router = useRouter(); // Add this line
+    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false); // Add modal state
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -83,11 +85,14 @@ const LogIn: React.FC = () => {
                                     required
                                 />
                                 <div className="mt-2 text-right">
-                                    <Link href="/forgot-password"> {/*  Adjust link as needed */}
-                                        <span className="text-sm text-blue-500 hover:underline dark:text-blue-400">
-                                            Forgot password?
-                                        </span>
-                                    </Link>
+                                    {/* Replace Link with button to open modal */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForgotPasswordModal(true)}
+                                        className="text-sm text-blue-500 hover:underline dark:text-blue-400 focus:outline-none"
+                                    >
+                                        Forgot password?
+                                    </button>
                                 </div>
                             </div>
 
@@ -106,7 +111,7 @@ const LogIn: React.FC = () => {
                                 type="submit"
                                 variant="primary"
                                 size="medium"
-                                className="flex items-center justify-center w-full" // Adjusted for full width and centered content
+                                className="flex items-center justify-center w-full"
                             >
                                 <span>Log In </span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 rtl:-scale-x-100 ml-2" viewBox="0 0 20 20" fill="currentColor">
@@ -128,6 +133,12 @@ const LogIn: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Add the modal component */}
+            <ForgotPasswordModal
+                isOpen={showForgotPasswordModal}
+                onClose={() => setShowForgotPasswordModal(false)}
+            />
         </section>
     )
 }

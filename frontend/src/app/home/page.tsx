@@ -19,36 +19,34 @@ const Home: React.FC = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
   const [matchPercentage, setMatchPercentage] = useState<number>(0);
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null); // Add this state
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const router = useRouter();
 
 const analyzeResumeWithAI = async () => {
   if (!jobDescription.trim() || uploadedFiles.length === 0) return;
+  setAnalysisLoading(true); // Start loader
   const token = localStorage.getItem('token');
   const formData = new FormData();
   formData.append('job_description', jobDescription);
-  formData.append('resume_file', uploadedFiles[0]); // Only first file for now
-
+  formData.append('resume_file', uploadedFiles[0]);
   try {
     const response = await fetch('http://localhost:8000/resume/analyze', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
-
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
+    if (!response.ok) throw new Error(await response.text());
     const data = await response.json();
     setMatchPercentage(data.match_score || 0);
-    setAiAnalysis(data); // Store full analysis
+    setAiAnalysis(data);
   } catch (error) {
     console.error('AI analysis error:', error);
     setMatchPercentage(0);
     setAiAnalysis(null);
+  } finally {
+    setAnalysisLoading(false); // Stop loader
   }
 };
 
@@ -171,6 +169,14 @@ const analyzeMatch = analyzeResumeWithAI;
     );
   }
 
+  function getKeywordColor(value: any) {
+  const str = String(value).toLowerCase();
+  if (str.includes('implied') || str.includes('partial')) return 'text-yellow-400';
+  if (str.includes('present') || str.includes('yes')) return 'text-green-400';
+  if (str.includes('no') || str.includes('not present')) return 'text-red-400';
+  return 'text-gray-300';
+}
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header with logout */}
@@ -198,15 +204,13 @@ const analyzeMatch = analyzeResumeWithAI;
       <main className="container mx-auto p-6">
         {/* Welcome message */}
         <div className="mb-8">
-          <h2 className="text-xl mb-4">Welcome to your dashboard!</h2>
-          {message && (
-            <p className="text-gray-300 bg-gray-800 p-4 rounded-lg">{message}</p>
-          )}
+          <h2 className="text-3xl mb-4 items-center justify-center flex">Welcome to your dashboard!</h2>
+          
         </div>
 
         {/* File upload section */}
         <div className="mb-8">
-          <h3 className="text-lg mb-4">Upload Files</h3>
+          <h3 className="text-lg mb-4 items-center justify-center flex">Upload Files</h3>
           <div
             {...getRootProps()}
             className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
@@ -273,15 +277,23 @@ const analyzeMatch = analyzeResumeWithAI;
           <div className="flex-1 bg-gray-900 rounded-lg p-6 min-h-[500px]">
             <h3 className="text-lg font-semibold mb-4">Resume Match Analysis</h3>
             <div className="h-full flex flex-col">
-              {uploadedFiles.length === 0 ? (
-                <div className="flex items-center justify-center flex-1">
-                  <p className="text-gray-400 italic">Upload a resume to see match analysis</p>
-                </div>
-              ) : !jobDescription.trim() ? (
-                <div className="flex items-center justify-center flex-1">
-                  <p className="text-gray-400 italic">Add a job description to analyze match percentage</p>
-                </div>
-              ) : (
+                {uploadedFiles.length === 0 ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <p className="text-gray-400 italic">Upload a resume to see match analysis</p>
+                  </div>
+                ) : !jobDescription.trim() ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <p className="text-gray-400 italic">Add a job description to analyze match percentage</p>
+                  </div>
+                ) : analysisLoading ? (
+                  <div className="flex items-center justify-center flex-1 min-h-[200px]">
+                    <svg className="animate-spin h-10 w-10 text-primary mr-3" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    <span className="text-primary text-lg font-semibold">Analyzing...</span>
+                  </div>
+                ) : (
                 <div className="space-y-6">
                   {/* Match Score */}
                   <div className="text-center">
@@ -454,7 +466,7 @@ const analyzeMatch = analyzeResumeWithAI;
               Object.entries(aiAnalysis.keyword_analysis).map(([key, value], idx) => (
                 <div key={idx} className="flex justify-between bg-gray-800 rounded px-3 py-2 text-sm">
                   <span className="text-gray-300">{key}</span>
-                  <span className={`font-semibold ${String(value).toLowerCase().includes('present') ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`font-semibold ${getKeywordColor(value)}`}>
                     {typeof value === 'object' ? JSON.stringify(value) : value}
                   </span>
                 </div>
