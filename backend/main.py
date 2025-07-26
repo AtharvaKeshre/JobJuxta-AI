@@ -1,5 +1,5 @@
 # uvicorn main:app --reload
-
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -19,9 +19,9 @@ check_db.check_connection()
 # Allow all origins (for development)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to specific domains in production
+    allow_origins=[os.getenv("ALLOWED_ORIGINS")],  # Change to specific domains in production
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
