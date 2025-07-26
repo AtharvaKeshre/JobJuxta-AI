@@ -32,7 +32,7 @@ const analyzeResumeWithAI = async () => {
   formData.append('job_description', jobDescription);
   formData.append('resume_file', uploadedFiles[0]);
   try {
-    const response = await fetch(`${process.env.URL}/resume/analyze`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/resume/analyze`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,

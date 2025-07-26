@@ -21,7 +21,7 @@ const LogIn: React.FC = () => {
         setError(null);
         setSuccess(null);
         try {
-            const response = await axios.post(`${process.env.URL}/login`, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
                 email,
                 password,
             });
