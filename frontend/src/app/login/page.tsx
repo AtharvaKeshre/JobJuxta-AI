@@ -21,7 +21,7 @@ const LogIn: React.FC = () => {
         setError(null);
         setSuccess(null);
         try {
-            const response = await axios.post("http://localhost:8000/login", {
+            const response = await axios.post(`${process.env.URL}/login`, {
                 email,
                 password,
             });
