@@ -58,6 +58,9 @@ const LogIn: React.FC = () => {
                         <p className="mt-4 text-white dark:text-white">
                             Log in to access your account and continue your journey.
                         </p>
+                        <p className="mt-4 text-primary dark:text-white">
+                            Note: The services may take upto 30 - 60 seconds to respond for the 1st time user.
+                        </p>
 
                         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mt-8 md:grid-cols-1"> 
                             <div>
