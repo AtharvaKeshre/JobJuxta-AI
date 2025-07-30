@@ -170,12 +170,22 @@ const analyzeMatch = analyzeResumeWithAI;
   }
 
   function getKeywordColor(value: any) {
-  const str = String(value).toLowerCase();
-  if (str.includes('implied') || str.includes('partial')) return 'text-yellow-400';
-  if (str.includes('no') || str.includes('not')) return 'text-red-400';
-  if (str.includes('present') || str.includes('yes')) return 'text-green-400';
-  return 'text-gray-300';
-}
+    const str = String(value).toLowerCase();
+
+    // Using `includes` for these is likely fine and allows for matching variations like "partially".
+    if (str.includes('implied') || str.includes('partial')) {
+      return 'text-yellow-400';
+    }
+    // Use word boundaries `\b` for more specific words to avoid matching them as substrings.
+    // This fixes the issue with "no" in "northeastern".
+    if (/\b(no|not)\b/.test(str)) {
+      return 'text-red-400';
+    }
+    if (/\b(present|yes)\b/.test(str)) {
+      return 'text-green-400';
+    }
+    return 'text-gray-300';
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
