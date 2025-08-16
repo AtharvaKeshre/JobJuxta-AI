@@ -237,7 +237,7 @@ const analyzeMatch = analyzeResumeWithAI;
                 <div>
                   <p className="mb-2">Drag & drop files here, or click to select</p>
                   <p className="text-sm text-gray-500">
-                    Supported: PDF, DOC, DOCX, TXT, Images, Excel, PowerPoint (max 10MB each)
+                    Supported: PDF (max 10MB each)
                   </p>
                 </div>
               )}

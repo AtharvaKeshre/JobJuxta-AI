@@ -77,6 +77,7 @@ const SignUp: React.FC = () => {
               Let’s get you all set up so you can verify your personal account
               and begin setting up your profile.
             </p>
+            <p className="text-primary mt-2">Note: The service may take upto 60 seconds to respond for the 1st time</p>
 
             {error && (
               <div
