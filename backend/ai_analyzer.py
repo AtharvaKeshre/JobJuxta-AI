@@ -45,7 +45,7 @@ async def analyze_resume_with_ai(resume_text: str, job_description: str):
     2.  "summary": A brief, 2-3 sentence summary of the candidate's suitability for the role.
     3.  "strengths": A list of key strengths from the resume that align with the job description.
     4.  "areas_for_improvement": A list of suggestions on how the candidate could better tailor their resume for this specific role. This could include missing keywords, skills to highlight, or experience to elaborate on.
-    5.  "keyword_analysis": An object that maps key skills, technologies, tools, and qualifications from the job description to their status in the resume. Extract a thorough list. For EACH keyword, the value MUST be exactly one of these four labels:
+    5.  "keyword_analysis": An object that maps key skills, technologies, tools, and qualifications from the job description to their status in the resume. Extract a thorough list of the most important keywords which are actually relevant and can have an impact with the ATS. For EACH keyword, the value MUST be exactly one of these four labels:
         - "Present": the keyword (or a clear equivalent) is explicitly stated in the resume.
         - "Partially Present": there is partial or related evidence (e.g. a similar tool, or limited experience) but not a full match.
         - "Implied": not stated directly, but reasonably inferable from the candidate's roles, projects, or other skills.
