@@ -1,5 +1,8 @@
+'use client';
 import React from 'react';
+import { motion } from 'framer-motion';
 import NavBar from '../../components/NavBar';
+import { container, fadeUp, fadeScale } from '@/src/lib/motion';
 
 const About = () => {
   return (
@@ -8,17 +11,30 @@ const About = () => {
       <div className="flex flex-col items-center justify-center flex-1 px-4 py-12">
         <div className="max-w-4xl w-full">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-orange-400 via-amber-500 to-yellow-400 bg-clip-text text-transparent mb-6">
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="text-center mb-12"
+          >
+            <motion.h1
+              variants={fadeUp}
+              className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-orange-400 via-amber-500 to-yellow-400 bg-clip-text text-transparent mb-6"
+            >
               About JobJuxta-AI
-            </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            </motion.h1>
+            <motion.p variants={fadeUp} className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Your intelligent career companion, designed to help job seekers stand out in today's competitive market through the power of AI.
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
           {/* Main Content Card */}
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-12 border border-gray-700/50">
+          <motion.div
+            variants={fadeScale}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15 }}
+            className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-12 border border-gray-700/50">
             <div className="grid md:grid-cols-2 gap-8 mb-10">
               {/* Left Column - Features */}
               <div>
@@ -95,37 +111,53 @@ const About = () => {
             <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
               <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-300 group-hover:duration-200 animate-pulse"></div>
-                <a href="/login" className="relative px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 group-hover:scale-105">
+                <motion.a
+                  href="/login"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="relative px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
+                >
                   <span>Get Started</span>
                   <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                </a>
+                </motion.a>
               </div>
-              
+
               <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-lg blur opacity-60 group-hover:opacity-100 transition duration-300 group-hover:duration-200"></div>
-                <a href="/signup" className="relative px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 group-hover:scale-105">
+                <motion.a
+                  href="/signup"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="relative px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
+                >
                   <span>Sign Up Free</span>
                   <span className="group-hover:rotate-12 transition-transform duration-300">✨</span>
-                </a>
+                </motion.a>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Stats Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="text-center p-6 bg-gradient-to-br from-orange-900/30 to-orange-800/30 rounded-xl border border-orange-500/20 backdrop-blur-sm">
+          <motion.div
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
+          >
+            <motion.div variants={fadeUp} whileHover={{ y: -6 }} className="text-center p-6 bg-gradient-to-br from-orange-900/30 to-orange-800/30 rounded-xl border border-orange-500/20 backdrop-blur-sm">
               <div className="text-3xl font-bold text-orange-400 mb-2">99%</div>
               <div className="text-gray-300">Match Accuracy</div>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-amber-900/30 to-amber-800/30 rounded-xl border border-amber-500/20 backdrop-blur-sm">
+            </motion.div>
+            <motion.div variants={fadeUp} whileHover={{ y: -6 }} className="text-center p-6 bg-gradient-to-br from-amber-900/30 to-amber-800/30 rounded-xl border border-amber-500/20 backdrop-blur-sm">
               <div className="text-3xl font-bold text-amber-400 mb-2">10K+</div>
               <div className="text-gray-300">Resumes Analyzed</div>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-yellow-900/30 to-yellow-800/30 rounded-xl border border-yellow-500/20 backdrop-blur-sm">
+            </motion.div>
+            <motion.div variants={fadeUp} whileHover={{ y: -6 }} className="text-center p-6 bg-gradient-to-br from-yellow-900/30 to-yellow-800/30 rounded-xl border border-yellow-500/20 backdrop-blur-sm">
               <div className="text-3xl font-bold text-yellow-400 mb-2">95%</div>
               <div className="text-gray-300">Success Rate</div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </div>
     </div>

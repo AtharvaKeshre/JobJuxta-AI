@@ -56,8 +56,8 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <section className="bg-black text-black dark:bg-white-900">
-      <NavBar title="जॉब जुक्सटा-AI" />
+    <section className="bg-black text-white">
+      <NavBar title="JobJuxta-AI" />
       <div className="flex justify-center min-h-screen">
         <div
           className="hidden bg-cover lg:block lg:w-2/5"
@@ -97,7 +97,7 @@ const SignUp: React.FC = () => {
             )}
 
             <div className="mt-6">
-              <h1 className="text-white-500 text-white">
+              <h1 className="text-white">
                 Select type of account
               </h1>
 
@@ -155,7 +155,7 @@ const SignUp: React.FC = () => {
               className="grid grid-cols-1 gap-6 mt-8 md:grid-cols-2"
             >
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   First Name
                 </label>
                 <input
@@ -163,13 +163,13 @@ const SignUp: React.FC = () => {
                   placeholder="John"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   Last name
                 </label>
                 <input
@@ -177,13 +177,13 @@ const SignUp: React.FC = () => {
                   placeholder="Snow"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   Phone number
                 </label>
                 <input
@@ -191,12 +191,12 @@ const SignUp: React.FC = () => {
                   placeholder="XXX-XX-XXXX-XXX"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                 />
               </div>
 
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   Email address
                 </label>
                 <input
@@ -205,13 +205,13 @@ const SignUp: React.FC = () => {
                   autoComplete="new-username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   Password
                 </label>
                 <input
@@ -220,13 +220,13 @@ const SignUp: React.FC = () => {
                   value={password}
                   autoComplete="new-password"
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-2 text-sm text-white dark:text-white-200">
+                <label className="block mb-2 text-sm text-gray-200">
                   Confirm password
                 </label>
                 <input
@@ -235,7 +235,7 @@ const SignUp: React.FC = () => {
                   value={confirmPassword}
                   autoComplete="new-password"
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full px-5 py-3 mt-2 text-white-700 placeholder-white-400 bg-white border border-white-200 rounded-lg dark:placeholder-white-600 dark:bg-white-900 dark:text-white-300 dark:border-white-700 focus:border-blue-400 dark:focus:border-blue-400 focus:ring-blue-400 focus:outline-none focus:ring focus:ring-opacity-40"
+                  className="block w-full px-5 py-3 mt-2 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:border-primary focus:ring-primary focus:outline-none focus:ring focus:ring-opacity-40"
                   required
                 />
               </div>
@@ -244,7 +244,7 @@ const SignUp: React.FC = () => {
                 type="submit"
                 variant="primary"
                 size="medium"
-                className="flex items-center justify-between w-40  col-span-1 md:col-span-2 ml-[250px]" // Adjusted for full width
+                className="flex items-center justify-center gap-2 w-40 col-span-1 md:col-span-2 md:justify-self-end"
               >
                 <span>Sign Up </span>
                 <svg

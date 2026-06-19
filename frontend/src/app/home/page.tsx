@@ -1,7 +1,13 @@
 "use client";
 import React, { useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
+import {
+  Upload, FileText, ExternalLink, Trash2, LogOut, Loader2,
+  Sparkles, Target, ClipboardList, CheckCircle2, AlertTriangle, Eraser, BarChart3,
+} from 'lucide-react';
+import { fadeUp, fadeScale } from '@/src/lib/motion';
 
 // Helper to decode JWT
 function parseJwt(token: string) {
@@ -21,12 +27,14 @@ const Home: React.FC = () => {
   const [matchPercentage, setMatchPercentage] = useState<number>(0);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const router = useRouter();
 
 const analyzeResumeWithAI = async () => {
   if (!jobDescription.trim() || uploadedFiles.length === 0) return;
   setAnalysisLoading(true); // Start loader
+  setAnalysisError(null);
   const token = localStorage.getItem('token');
   const formData = new FormData();
   formData.append('job_description', jobDescription);
@@ -37,14 +45,25 @@ const analyzeResumeWithAI = async () => {
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) {
+      // Surface the backend's detail message (e.g. quota exceeded) to the user.
+      let detail = `Request failed (${response.status})`;
+      try {
+        const errData = await response.json();
+        detail = errData.detail || detail;
+      } catch {
+        // non-JSON error body; keep the default message
+      }
+      throw new Error(detail);
+    }
     const data = await response.json();
     setMatchPercentage(data.match_score || 0);
     setAiAnalysis(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI analysis error:', error);
     setMatchPercentage(0);
     setAiAnalysis(null);
+    setAnalysisError(error?.message || 'Something went wrong while analyzing. Please try again.');
   } finally {
     setAnalysisLoading(false); // Stop loader
   }
@@ -60,7 +79,7 @@ const analyzeResumeWithAI = async () => {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     console.log('Files dropped:', acceptedFiles);
     setUploadedFiles(prev => [...prev, ...acceptedFiles]);
-    
+
     // Example: Process files here
     acceptedFiles.forEach(file => {
       console.log(`File: ${file.name}, Size: ${file.size} bytes, Type: ${file.type}`);
@@ -74,7 +93,7 @@ const analyzeResumeWithAI = async () => {
   const openFileInNewTab = (file: File) => {
     const url = URL.createObjectURL(file);
     const newWindow = window.open(url, '_blank');
-    
+
     // Clean up the URL after a delay to prevent memory leaks
     if (newWindow) {
       setTimeout(() => {
@@ -113,13 +132,13 @@ const analyzeMatch = analyzeResumeWithAI;
       const fetchData = async () => {
         try {
           setIsLoading(true);
-          const response = await fetch("http://localhost:8000", {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           });
-          
+
           if (!response.ok) {
             if (response.status === 401) {
               // Token expired or invalid
@@ -129,7 +148,7 @@ const analyzeMatch = analyzeResumeWithAI;
             }
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          
+
           const data = await response.json();
           setMessage(data.message || 'Welcome to the app!');
         } catch (error) {
@@ -144,7 +163,7 @@ const analyzeMatch = analyzeResumeWithAI;
     }
   }, [router]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/plain': ['.txt'],
@@ -163,152 +182,285 @@ const analyzeMatch = analyzeResumeWithAI;
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-300">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-lg">Loading your dashboard…</span>
+        </div>
       </div>
     );
   }
 
-  function getKeywordColor(value: any) {
-    const str = String(value).toLowerCase();
-
-    // Using `includes` for these is likely fine and allows for matching variations like "partially".
-    if (str.includes('implied') || str.includes('partial')) {
-      return 'text-yellow-400';
-    }
-    // Use word boundaries `\b` for more specific words to avoid matching them as substrings.
-    // This fixes the issue with "no" in "northeastern".
-    if (/\b(no|not)\b/.test(str)) {
-      return 'text-red-400';
-    }
-    if (/\b(present|yes)\b/.test(str)) {
-      return 'text-green-400';
-    }
-    return 'text-gray-300';
+  // Compute real keyword coverage from the AI's keyword_analysis object:
+  // the share of listed keywords that are actually present in the resume.
+  function getKeywordCoverage(): number | null {
+    const ka = aiAnalysis?.keyword_analysis;
+    if (!ka || typeof ka !== 'object') return null;
+    const values = Object.values(ka);
+    if (values.length === 0) return null;
+    const present = values.filter((v) => /\b(present|yes)\b/.test(String(v).toLowerCase())).length;
+    return Math.round((present / values.length) * 100);
   }
 
+  // Normalize the AI's free-text keyword value into a labelled status with colors.
+  // `badge` styles the pill (bg/text/border); `dot` is the leading status dot.
+  function getKeywordStatus(value: any) {
+    const str = String(value ?? '').toLowerCase();
+
+    // Order matters: "partially present" also contains "present", and
+    // "not present" also contains "present" — so check those first.
+    if (str.includes('partial')) {
+      return { label: 'Partially Present', badge: 'border-orange-500/30 bg-orange-500/10 text-orange-300', dot: 'bg-orange-400' };
+    }
+    if (str.includes('implied')) {
+      return { label: 'Implied', badge: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300', dot: 'bg-yellow-400' };
+    }
+    // Word boundaries avoid matching "no" inside words like "northeastern".
+    if (/\b(no|not|absent|missing|none|lacking)\b/.test(str)) {
+      return { label: 'Absent', badge: 'border-red-500/30 bg-red-500/10 text-red-300', dot: 'bg-red-400' };
+    }
+    if (/\b(present|yes|found)\b/.test(str)) {
+      return { label: 'Present', badge: 'border-green-500/30 bg-green-500/10 text-green-300', dot: 'bg-green-400' };
+    }
+    // Fallback: show the raw value if it doesn't match a known status.
+    return { label: String(value ?? '—') || '—', badge: 'border-gray-600/40 bg-gray-700/40 text-gray-300', dot: 'bg-gray-400' };
+  }
+
+  const firstName = userName ? userName.split(' ')[0] : null;
+  const canAnalyze = jobDescription.trim().length > 0 && uploadedFiles.length > 0 && !analysisLoading;
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header with logout */}
-      <header className="flex justify-between items-center py-6 px-10 border-b border-gray-800">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-primary">जॉब जुक्सटा-AI <span className='text-white'>Dashboard</span></h1>
-        </div>
-        <div className='flex items-center space-x-4'>
-          <div className='h-10 w-10 bg-white text-2xl rounded-full items-center justify-center flex text-black'>
-            {userName?.charAt(0)}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="sticky top-0 z-30 flex justify-between items-center py-4 px-6 sm:px-10 border-b border-gray-800 bg-black/50 backdrop-blur-md"
+      >
+        <h1 className="text-xl sm:text-2xl font-bold text-primary">
+          JobJuxta-AI <span className="text-white font-semibold">Dashboard</span>
+        </h1>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center font-bold text-white shadow-lg">
+            {userName?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           {userName && (
-            <span className="text-gray-300 text-base font-medium">{userName}</span>
+            <span className="hidden sm:inline text-gray-200 text-sm font-medium">{userName}</span>
           )}
-          <button
+          <motion.button
             onClick={handleLogout}
-            className="bg-primary hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm font-semibold text-gray-200 transition-colors hover:border-primary/50 hover:text-primary"
           >
-            Logout
-          </button>
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Logout</span>
+          </motion.button>
         </div>
-      </header>
+      </motion.header>
 
       {/* Main content */}
-      <main className="container mx-auto p-6">
-        {/* Welcome message */}
-        <div className="mb-8">
-          <h2 className="text-3xl mb-4 items-center justify-center flex">Welcome to your dashboard!</h2>
-          
-        </div>
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+        {/* Greeting */}
+        <motion.div variants={fadeUp} initial="hidden" animate="show" className="mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold">
+            Welcome back{firstName ? `, ${firstName}` : ''} 👋
+          </h2>
+          <p className="mt-1 text-gray-400">
+            Upload your resume, paste a job description, and let AI score your match.
+          </p>
+        </motion.div>
 
-        {/* File upload section */}
-        <div className="mb-8">
-          <h3 className="text-lg mb-4 items-center justify-center flex">Upload Files</h3>
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
-              isDragActive 
-                ? 'border-blue-400 bg-blue-50 bg-opacity-10' 
-                : 'border-gray-400 bg-gray-800 hover:bg-gray-700'
-            }`}
+        {/* Two-column: inputs (left) + results (right) */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* LEFT — Inputs */}
+          <motion.section
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 backdrop-blur-sm"
           >
-            <input {...getInputProps()} />
-            <div className="text-gray-300">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Upload size={18} className="text-primary" />
+              Your resume
+            </h3>
+
+            {/* Dropzone */}
+            <div
+              {...getRootProps()}
+              className={`group flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-4 text-left transition-colors ${
+                isDragActive
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-600 bg-gray-900/40 hover:border-primary/60 hover:bg-gray-900/70'
+              }`}
+            >
+              <input {...getInputProps()} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Upload size={18} />
+              </div>
               {isDragActive ? (
-                <p className="text-blue-400">Drop the files here...</p>
+                <p className="text-sm font-medium text-primary">Drop the files here…</p>
               ) : (
-                <div>
-                  <p className="mb-2">Drag & drop files here, or click to select</p>
-                  <p className="text-sm text-gray-500">
-                    Supported: PDF (max 10MB each)
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-200">Drag &amp; drop, or click to select</p>
+                  <p className="text-xs text-gray-500">
+                    Only <strong className="text-primary">PDF</strong> allowed for now. Max size: 10MB.
                   </p>
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Uploaded files list */}
-        {uploadedFiles.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-lg mb-4">Uploaded Files ({uploadedFiles.length})</h3>
-            <div className="space-y-2">
-              {uploadedFiles.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-gray-800 p-3 rounded-lg"
+            {/* Uploaded files */}
+            {uploadedFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-gray-400">
+                  Uploaded files ({uploadedFiles.length})
+                </p>
+                <AnimatePresence initial={false}>
+                  {uploadedFiles.map((file, index) => (
+                    <motion.div
+                      key={`${file.name}-${file.size}-${index}`}
+                      layout
+                      initial={{ opacity: 0, x: -16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 16 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex items-center gap-3 rounded-lg border border-gray-700/50 bg-gray-900/60 p-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <FileText size={18} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{file.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || 'Unknown type'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => openFileInNewTab(file)}
+                        aria-label="Open file"
+                        title="Open file"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-primary"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
+                      <button
+                        onClick={() => removeFile(index)}
+                        aria-label="Remove file"
+                        title="Remove file"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-red-400"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Job description */}
+            <h3 className="mb-3 mt-8 flex items-center gap-2 text-lg font-semibold">
+              <ClipboardList size={18} className="text-primary" />
+              Job description
+            </h3>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the job description here to analyze how well your resume matches the requirements…"
+              className="min-h-[220px] w-full resize-none rounded-lg border border-gray-600/60 bg-gray-900/60 p-4 text-white placeholder-gray-500 transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <div className="mt-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+              <span className="text-sm text-gray-500">{jobDescription.length} characters</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setJobDescription('')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium">{file.name}</p>
-                    <p className="text-sm text-gray-400">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type || 'Unknown type'}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => openFileInNewTab(file)}
-                      className="bg-primary hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Open
-                    </button>
-                    <button
-                      onClick={() => removeFile(index)}
-                      className="text-red-400 hover:text-red-300 px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  <Eraser size={16} />
+                  Clear
+                </button>
+                <motion.button
+                  onClick={analyzeMatch}
+                  disabled={!canAnalyze}
+                  whileHover={{ scale: canAnalyze ? 1.03 : 1 }}
+                  whileTap={{ scale: canAnalyze ? 0.97 : 1 }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-gray-600"
+                >
+                  {analysisLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      Analyze Match
+                    </>
+                  )}
+                </motion.button>
+              </div>
             </div>
-          </div>
-        )}
+          </motion.section>
 
-        {/* Job Analysis Section */}
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Match Analysis Section */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-6 min-h-[500px]">
-            <h3 className="text-lg font-semibold mb-4">Resume Match Analysis</h3>
-            <div className="h-full flex flex-col">
-                {uploadedFiles.length === 0 ? (
-                  <div className="flex items-center justify-center flex-1">
-                    <p className="text-gray-400 italic">Upload a resume to see match analysis</p>
-                  </div>
-                ) : !jobDescription.trim() ? (
-                  <div className="flex items-center justify-center flex-1">
-                    <p className="text-gray-400 italic">Add a job description to analyze match percentage</p>
-                  </div>
-                ) : analysisLoading ? (
-                  <div className="flex items-center justify-center flex-1 min-h-[200px]">
-                    <svg className="animate-spin h-10 w-10 text-primary mr-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                    </svg>
-                    <span className="text-primary text-lg font-semibold">Analyzing...</span>
-                  </div>
-                ) : (
-                <div className="space-y-6">
+          {/* RIGHT — Match analysis */}
+          <motion.section
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="flex min-h-[500px] flex-col rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 backdrop-blur-sm"
+          >
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Target size={18} className="text-primary" />
+              Resume match analysis
+            </h3>
+            <div className="flex flex-1 flex-col">
+              {uploadedFiles.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <Upload size={32} className="mb-3 text-gray-600" />
+                  <p className="italic text-gray-400">Upload a resume to see match analysis</p>
+                </div>
+              ) : !jobDescription.trim() ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <ClipboardList size={32} className="mb-3 text-gray-600" />
+                  <p className="italic text-gray-400">Add a job description to analyze match percentage</p>
+                </div>
+              ) : analysisLoading ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center min-h-[200px]">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  <span className="text-lg font-semibold text-primary">Analyzing your resume…</span>
+                  <span className="text-sm text-gray-500">This can take 30–60s on the first request</span>
+                </div>
+              ) : analysisError ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <AlertTriangle size={32} className="text-red-400" />
+                  <p className="font-semibold text-red-300">Analysis failed</p>
+                  <p className="max-w-sm text-sm text-gray-400">{analysisError}</p>
+                  <button
+                    onClick={analyzeMatch}
+                    className="mt-1 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                  >
+                    <Sparkles size={16} />
+                    Try again
+                  </button>
+                </div>
+              ) : !aiAnalysis ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <Sparkles size={32} className="text-gray-600" />
+                  <p className="italic text-gray-400">Click “Analyze Match” to see your results</p>
+                </div>
+              ) : (
+                <motion.div variants={fadeScale} initial="hidden" animate="show" className="space-y-6">
                   {/* Match Score */}
                   <div className="text-center">
-                    <div className="relative w-32 h-32 mx-auto mb-4">
-                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      className="relative mx-auto mb-4 h-32 w-32"
+                    >
+                      <svg className="h-32 w-32 -rotate-90 transform" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-700" />
                         <circle
                           cx="50"
                           cy="50"
@@ -316,15 +468,7 @@ const analyzeMatch = analyzeResumeWithAI;
                           stroke="currentColor"
                           strokeWidth="8"
                           fill="transparent"
-                          className="text-gray-700"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
+                          strokeLinecap="round"
                           strokeDasharray={`${matchPercentage * 2.51} 251`}
                           className="text-primary transition-all duration-1000"
                         />
@@ -332,163 +476,155 @@ const analyzeMatch = analyzeResumeWithAI;
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-3xl font-bold text-white">{matchPercentage}%</span>
                       </div>
-                    </div>
-                    <h4 className="text-xl font-semibold mb-2">Overall Match Score</h4>
-                    <p className="text-gray-400 text-sm">
-                      {matchPercentage >= 80 ? 'Excellent match!' : 
-                       matchPercentage >= 60 ? 'Good match' : 
+                    </motion.div>
+                    <h4 className="mb-2 text-xl font-semibold">Overall Match Score</h4>
+                    <p className="text-sm text-gray-400">
+                      {matchPercentage >= 80 ? 'Excellent match!' :
+                       matchPercentage >= 60 ? 'Good match' :
                        matchPercentage >= 40 ? 'Moderate match' : 'Low match'}
                     </p>
                   </div>
 
-                  {/* Match Details */}
+                  {/* Match Breakdown */}
                   <div className="space-y-4">
                     <h4 className="text-lg font-semibold">Match Breakdown</h4>
-                    
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Skills Match</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-300">Overall Match</span>
                         <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(matchPercentage + 10, 100)}%` }}
-                            ></div>
+                          <div className="h-2 w-24 rounded-full bg-gray-700">
+                            <div className="h-2 rounded-full bg-primary transition-all duration-500" style={{ width: `${matchPercentage}%` }} />
                           </div>
-                          <span className="text-sm text-gray-400 w-10">{Math.min(matchPercentage + 10, 100)}%</span>
+                          <span className="w-10 text-sm text-gray-400">{matchPercentage}%</span>
                         </div>
                       </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Experience Level</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.max(matchPercentage - 5, 0)}%` }}
-                            ></div>
+
+                      {getKeywordCoverage() !== null && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-300">Keyword Coverage</span>
+                          <div className="flex items-center space-x-2">
+                            <div className="h-2 w-24 rounded-full bg-gray-700">
+                              <div className="h-2 rounded-full bg-green-500 transition-all duration-500" style={{ width: `${getKeywordCoverage()}%` }} />
+                            </div>
+                            <span className="w-10 text-sm text-gray-400">{getKeywordCoverage()}%</span>
                           </div>
-                          <span className="text-sm text-gray-400 w-10">{Math.max(matchPercentage - 5, 0)}%</span>
                         </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Keywords Match</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-yellow-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${matchPercentage}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-400 w-10">{matchPercentage}%</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Suggestions */}
-                  <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-                    <h5 className="font-semibold mb-2 text-primary">Improvement Suggestions</h5>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      <li>• Add more relevant keywords from the job description</li>
-                      <li>• Highlight specific achievements and metrics</li>
-                      <li>• Include missing technical skills mentioned in the job posting</li>
-                    </ul>
-                  </div>
-                </div>
+                  {aiAnalysis?.areas_for_improvement?.length > 0 && (
+                    <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <h5 className="mb-2 flex items-center gap-2 font-semibold text-primary">
+                        <Sparkles size={16} />
+                        Improvement Suggestions
+                      </h5>
+                      <ul className="space-y-1 text-sm text-gray-300">
+                        {aiAnalysis.areas_for_improvement.slice(0, 4).map((item: string, idx: number) => (
+                          <li key={idx}>• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </motion.div>
               )}
             </div>
-          </div>
+          </motion.section>
+        </div>
 
-          {/* Job Description Section */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-6 min-h-[500px] flex flex-col">
-            <h3 className="text-lg font-semibold mb-4">Job Description</h3>
-            <div className="flex flex-col flex-1 gap-4">
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the job description here to analyze how well your resume matches the requirements..."
-                className="flex-1 bg-gray-800 border border-gray-600 rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all min-h-[300px]"
-              />
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mt-2">
-                <span className="text-sm text-gray-400">
-                  {jobDescription.length} characters
-                </span>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setJobDescription('')}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors text-sm"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    onClick={analyzeMatch}
-                    disabled={!jobDescription.trim() || uploadedFiles.length === 0}
-                    className="px-4 py-2 bg-primary hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors text-sm"
-                  >
-                    Analyze Match
-                  </button>
+        {/* Full AI Analysis */}
+        <motion.section
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.1 }}
+          className="mt-8 rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 backdrop-blur-sm"
+        >
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <BarChart3 size={18} className="text-primary" />
+            Full AI Analysis
+          </h3>
+          {aiAnalysis ? (
+            <motion.div variants={fadeUp} initial="hidden" animate="show">
+              {/* Match Score & Summary */}
+              <div className="mb-6 rounded-xl border border-gray-700/50 bg-gray-900/50 p-5">
+                <div className="flex items-center gap-4">
+                  <span className="text-4xl font-bold text-primary">{aiAnalysis.match_score}%</span>
+                  <span className="text-lg font-medium text-gray-300">Match Score</span>
+                </div>
+                <p className="mt-2 text-gray-200">{aiAnalysis.summary}</p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Strengths */}
+                <div className="rounded-xl border border-gray-700/50 bg-gray-900/50 p-5">
+                  <h4 className="mb-3 flex items-center gap-2 font-semibold text-green-400">
+                    <CheckCircle2 size={18} />
+                    Strengths
+                  </h4>
+                  <ul className="list-disc space-y-1 pl-6 text-gray-200">
+                    {aiAnalysis.strengths?.map((item: string, idx: number) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Areas for Improvement */}
+                <div className="rounded-xl border border-gray-700/50 bg-gray-900/50 p-5">
+                  <h4 className="mb-3 flex items-center gap-2 font-semibold text-yellow-400">
+                    <AlertTriangle size={18} />
+                    Areas for Improvement
+                  </h4>
+                  <ul className="list-disc space-y-1 pl-6 text-gray-200">
+                    {aiAnalysis.areas_for_improvement?.map((item: string, idx: number) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-        <section className="container mx-auto p-6 mt-10">
-  <h3 className="text-lg font-semibold mb-4">Full AI Analysis</h3>
-  <div className="bg-gray-900 rounded-lg p-6">
-    {aiAnalysis ? (
-      <div>
-        {/* Match Score & Summary */}
-        <div className="mb-6">
-          <div className="flex items-center gap-4">
-            <span className="text-4xl font-bold text-primary">{aiAnalysis.match_score}%</span>
-            <span className="text-gray-300 text-lg font-medium">Match Score</span>
-          </div>
-          <p className="mt-2 text-gray-200">{aiAnalysis.summary}</p>
-        </div>
 
-        {/* Strengths */}
-        <div className="mb-6">
-          <h4 className="text-primary font-semibold mb-2">Strengths</h4>
-          <ul className="list-disc pl-6 text-gray-200 space-y-1">
-            {aiAnalysis.strengths?.map((item: string, idx: number) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Areas for Improvement */}
-        <div className="mb-6">
-          <h4 className="text-yellow-400 font-semibold mb-2">Areas for Improvement</h4>
-          <ul className="list-disc pl-6 text-gray-200 space-y-1">
-            {aiAnalysis.areas_for_improvement?.map((item: string, idx: number) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Keyword Analysis */}
-        <div>
-          <h4 className="text-blue-400 font-semibold mb-2">Keyword Analysis</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {aiAnalysis.keyword_analysis &&
-              Object.entries(aiAnalysis.keyword_analysis).map(([key, value], idx) => (
-                <div key={idx} className="flex justify-between bg-gray-800 rounded px-3 py-2 text-sm">
-                  <span className="text-gray-300">{key}</span>
-                  <span className={`font-semibold ${getKeywordColor(value)}`}>
-{typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value || '')}
-                  </span>
+              {/* Keyword Analysis */}
+              <div className="mt-6">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-semibold text-gray-200">Keyword Analysis</h4>
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-400" />Present</span>
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-orange-400" />Partial</span>
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" />Implied</span>
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-400" />Absent</span>
+                  </div>
                 </div>
-              ))}
-          </div>  
-        </div>
-      </div>
-    ) : (
-      <p className="text-gray-400 italic">No analysis yet. Upload a resume and job description, then click Analyze Match.</p>
-    )}
-  </div>
-</section>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  {aiAnalysis.keyword_analysis &&
+                    Object.entries(aiAnalysis.keyword_analysis).map(([key, value], idx) => {
+                      const status = getKeywordStatus(value);
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-gray-700/50 bg-gray-900/60 px-3 py-2 text-sm"
+                        >
+                          <span className="truncate text-gray-300" title={key}>{key}</span>
+                          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${status.badge}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                            {status.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <BarChart3 size={32} className="mb-3 text-gray-600" />
+              <p className="italic text-gray-400">
+                No analysis yet. Upload a resume and job description, then click Analyze Match.
+              </p>
+            </div>
+          )}
+        </motion.section>
       </main>
     </div>
   );
