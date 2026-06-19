@@ -10,7 +10,8 @@ PyJWT==2.8.0
 pymongo==4.6.0
 
 # AI/ML
-google-generativeai==0.3.2
+# 0.8.x is required for gemini-2.5-flash and JSON mode (response_mime_type).
+google-generativeai==0.8.5
 
 # PDF processing
 pypdf==3.17.1
